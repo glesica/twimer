@@ -16,7 +16,7 @@ type Stopwatch struct {
 	ticker     *time.Ticker // periodic timer that updates state
 	running    bool         // whether the timer is running or paused
 	lastUpdate *time.Time
-	lastTick *time.Time
+	lastTick   *time.Time
 	mutex      sync.Mutex
 }
 
@@ -48,7 +48,7 @@ func (s *Stopwatch) update() {
 	s.elapsed += now.Sub(*s.lastUpdate)
 	s.lastUpdate = &now
 
-	if now.Sub(*s.lastTick) >= 1 * time.Second {
+	if now.Sub(*s.lastTick) >= 1*time.Second {
 		s.tick(s.elapsed, s.target)
 		s.lastTick = &now
 	}
@@ -108,6 +108,13 @@ func (s *Stopwatch) Toggle() {
 	} else {
 		s.unsafeStart()
 	}
+}
+
+func (s *Stopwatch) SetElapsed(elapsed time.Duration) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.elapsed = elapsed
 }
 
 func (s *Stopwatch) SetTarget(target time.Duration) {

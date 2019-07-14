@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
 	"fyne.io/fyne/layout"
@@ -15,26 +14,26 @@ func main() {
 	a.Settings().SetTheme(theme.LightTheme())
 	var w fyne.Window
 
+	persister := NewPersister()
+
 	timeDisplay := &widget.Label{
-		Text: "...",
+		Text: formatDuration(persister.Elapsed()),
 		TextStyle: fyne.TextStyle{
 			Bold: true,
 		},
 	}
 
-	stopwatch := NewStopwatch(func (elapsed, target time.Duration) {
-		hours := elapsed / time.Hour
-		minutes := (elapsed - (hours * time.Hour)) / time.Minute
-		seconds := (elapsed - (hours * time.Hour) - (minutes * time.Minute)) / time.Second
-		content := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+	stopwatch := NewStopwatch(func(elapsed, target time.Duration) {
+		persister.SetElapsed(elapsed)
+		content := formatDuration(elapsed)
 		timeDisplay.SetText(content)
 	})
+	stopwatch.SetElapsed(persister.Elapsed())
 
 	startStopButton := &widget.Button{
 		Text:  "Start / Pause",
 		Style: widget.PrimaryButton,
 		OnTapped: func() {
-			println("[DEBUG] Start / Pause")
 			stopwatch.Toggle()
 		},
 	}
@@ -42,7 +41,6 @@ func main() {
 	resetButton := &widget.Button{
 		Text: "Reset",
 		OnTapped: func() {
-			println("[DEBUG] Reset")
 			stopwatch.Reset()
 		},
 	}
@@ -50,7 +48,7 @@ func main() {
 	copyPathButton := &widget.Button{
 		Text: "Copy",
 		OnTapped: func() {
-			w.Clipboard().SetContent("/home/stuff/file.txt")
+			w.Clipboard().SetContent(persister.ElapsedPath())
 		},
 	}
 
@@ -59,7 +57,7 @@ func main() {
 	w.SetFixedSize(true)
 	w.Resize(fyne.Size{
 		Height: -1,
-		Width: 200,
+		Width:  200,
 	})
 	w.SetContent(&widget.Box{
 		Children: []fyne.CanvasObject{
