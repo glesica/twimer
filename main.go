@@ -14,7 +14,7 @@ func main() {
 	a.Settings().SetTheme(theme.LightTheme())
 	var w fyne.Window
 
-	persister := NewPersister()
+	persister := NewPersister(formatDuration)
 
 	timeDisplay := &widget.Label{
 		Text: formatDuration(persister.Elapsed()),

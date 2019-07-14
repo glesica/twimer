@@ -10,14 +10,18 @@ import (
 )
 
 const TwimerDirectory = ".twimer"
+const StateFilename = "state"
 const ElapsedFilename = "elapsed"
 
-// TODO: Might make sense to make this thread safe as well
+type FormatCallback = func(duration time.Duration) string
+
 type Persister struct {
+	statePath   string
 	elapsedPath string
+	formatter   FormatCallback
 }
 
-func NewPersister() *Persister {
+func NewPersister(formatter FormatCallback) *Persister {
 	var directory string
 
 	home, err := os.UserHomeDir()
@@ -30,25 +34,34 @@ func NewPersister() *Persister {
 	err = os.Mkdir(directory, os.ModeDir|os.ModePerm)
 	if err != nil {
 		if !os.IsExist(err) {
-			log.Panicln("failed to create directory\n", directory, "\n", err)
+			log.Panicln("failed to create data directory\n", directory, "\n", err)
 		}
 	}
 
+	statePath := path.Join(directory, StateFilename)
 	elapsedPath := path.Join(directory, ElapsedFilename)
 
+	if formatter == nil {
+		formatter = func(duration time.Duration) string {
+			return duration.String()
+		}
+	}
+
 	return &Persister{
+		statePath:   statePath,
 		elapsedPath: elapsedPath,
+		formatter:   formatter,
 	}
 }
 
 func (p *Persister) Elapsed() time.Duration {
-	data, err := ioutil.ReadFile(p.elapsedPath)
+	data, err := ioutil.ReadFile(p.statePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			p.SetElapsed(0)
 			return p.Elapsed()
 		}
-		log.Panicln("failed to read file\n", p.elapsedPath, "\n", err)
+		log.Panicln("failed to read file\n", p.statePath, "\n", err)
 	}
 
 	duration, err := time.ParseDuration(string(data))
@@ -60,11 +73,18 @@ func (p *Persister) Elapsed() time.Duration {
 }
 
 func (p *Persister) SetElapsed(value time.Duration) {
-	strData := fmt.Sprintf("%dns", value.Nanoseconds())
-	data := []byte(strData)
-	err := ioutil.WriteFile(p.elapsedPath, data, os.ModePerm)
+	var err error
+
+	stateData := []byte(fmt.Sprintf("%dns", value.Nanoseconds()))
+	err = ioutil.WriteFile(p.statePath, stateData, os.ModePerm)
 	if err != nil {
-		log.Panic("failed to write file\n", p.elapsedPath, "\n", err)
+		log.Panicln("failed to write file\n", p.statePath, "\n", err)
+	}
+
+	elapsedData := []byte(p.formatter(value))
+	err = ioutil.WriteFile(p.elapsedPath, elapsedData, os.ModePerm)
+	if err != nil {
+		log.Panicln("failed to write file\n", p.elapsedPath, "\n", err)
 	}
 }
 
